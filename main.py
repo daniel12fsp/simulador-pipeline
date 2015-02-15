@@ -1,10 +1,12 @@
 from classes import Processador
+import utils
 
 def if_estagio():
-	#Pega a instrucao do pc
-	instrucao = proc.mem_instrucao[proc.regs["pc"]]
+	#Pega a instrucao de endereco armazenado em pc
+	pc = proc.regs.ler("pc")
+	instrucao = proc.mem_instrucao[pc]
 	#pc + 2
-	proc.regs["pc"] += 2 
+	proc.regs.escrever("pc", pc + 2)
 	return instrucao 
 
 def if_id_registradores(instrucao):
@@ -13,36 +15,40 @@ def if_id_registradores(instrucao):
 
 def id_estagio(instrucao):
 	# Divide a instrucao pelo espaco
-	ins = instrucao.split()
-	registros = ins.pop()
-	ins.extend(registros.split(","))
-	print(ins)
-	if(proc.tipo(ins[0]) == "r3"):
-		rs = proc.regs[ins[2]]
-		rt = proc.regs[ins[3]]
-		return ins[0], ins[1], rs, rt # rd, rs, rt
+	ins = instrucao.replace(",","").split()
+	func = ins.pop(0)
+	regs = ins
+	print("Tipo:", proc.tipo(func))
+	if(proc.tipo(func) == "r3"):
+		rd = regs[0]
+		rs = proc.regs.ler(regs[1])
+		rt = proc.regs.ler(regs[2])
+		return func, [rd ,rs, rt] # funct, rd, rs, rt
 
-	elif(proc.tipo(ins[0]) == "r2"):
-		rs = proc.regs[ins[2]]
-		return ins[0], ins[1], rs
+	elif(proc.tipo(func) == "r2"):
+		rd = regs[0]
+		rs = proc.regs.ler(regs[1])
+		return func, [rd, rs] # funct, rd, rs
 
-	elif(proc.tipo(ins[0]) == "j"):
+	elif(proc.tipo(func) == "r1"):
+		rd = proc.regs.ler(regs[0])
+		return func, [rd]
+
+	elif(proc.tipo(func) == "j"):
 		pass
 	#elseif proc.tipo(instrucao) == "i")
 	else:
 		pass
 
-def id_exmen_registradores(registros):
-	return registros
+def id_exmen_registradores(func, regs):
+	return func, regs
 
-def exmen_estagio(registros):
-	
-	if(proc.tipo(registros[0])):
-	#Executa as instrucoes do tipo R
-		func, rd, rs, rt = registros
-		resultado = proc.alu.func[func](rs, rt)
+def exmen_estagio(func, regs):
+	#Parte ULA!
+	rd = regs.pop(0)
+	resultado = proc.alu.exec_funcao(func, regs)
 	return rd, resultado
-	
+
 	#Falta fazer a parte da MEM
 
 
@@ -50,7 +56,7 @@ def exmen_wb_registradores(rd, resultado):
 	return rd, resultado
 
 def wb_estagio(rd, resultado):
-	proc.regs[rd] = resultado
+	proc.regs.escrever(rd, resultado)
 
 proc = Processador("teste2.asm")
 
@@ -59,10 +65,10 @@ while(True):
 	if(instrucao == None):
 		break
 	instrucao = if_id_registradores(instrucao)
-	registros = id_estagio(instrucao)
-	registros = id_exmen_registradores(registros)
-	rd, resultado = exmen_estagio(registros)
+	func, registros = id_estagio(instrucao)
+	func, registros = id_exmen_registradores(func, registros)
+	rd, resultado = exmen_estagio(func, registros)
 	rd, resultado = exmen_wb_registradores(rd, resultado)
 	wb_estagio(rd, resultado)
-	print(resultado)
+	utils.imprimir_registradores(proc)
 
